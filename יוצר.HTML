@@ -1,0 +1,744 @@
+<!doctype html><html><head><meta charset=utf8><meta name=viewport content="width=device-width,initial-scale=1,viewport-fit=cover"><style>:root{color-scheme:light;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}html{scroll-padding-top:env(safe-area-inset-top,0px)}body{margin:0;padding:0;font:14px -apple-system,BlinkMacSystemFont,sans-serif;background:#fff;color:#000}img{max-width:100%}[hidden]:not([hidden=until-found i]){display:none!important}</style></head><body>
+<title>מחולל קישורי מייל</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Assistant:wght@400;600;700&family=IBM+Plex+Mono:wght@400;500&family=Secular+One&display=swap">
+<style>
+  /* Layout: a letter-writing desk. Form on the right (RTL start), an airmail-striped "envelope" card on the left that shows the generated link and a live Gmail preview. */
+  :root {
+    --bg: #e8edf2;
+    --paper: #fbfcfd;
+    --ink: #14263b;
+    --muted: #586a7c;
+    --line: #c8d3de;
+    --accent: #1b6a88;
+    --accent-ink: #ffffff;
+    --stamp: #e8a23a;
+    --ok: #2b7a4b;
+    --warn: #a4501b;
+    --code-bg: #eef3f7;
+    --hl-key: #1b6a88;
+    --hl-val: #9a4a12;
+    --font-display: "Secular One", "Assistant", Arial, sans-serif;
+    --font-body: "Assistant", "Segoe UI", Arial, sans-serif;
+    --font-mono: "IBM Plex Mono", ui-monospace, Consolas, monospace;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --bg: #0e1925;
+      --paper: #162639;
+      --ink: #e6edf4;
+      --muted: #9badbd;
+      --line: #2a3d52;
+      --accent: #5cc0de;
+      --accent-ink: #08202b;
+      --stamp: #f0b55a;
+      --ok: #6fd097;
+      --warn: #f0a874;
+      --code-bg: #0f1d2d;
+      --hl-key: #7fd3ec;
+      --hl-val: #f0b55a;
+      color-scheme: dark;
+    }
+  }
+  :root[data-theme="dark"] {
+    --bg: #0e1925;
+    --paper: #162639;
+    --ink: #e6edf4;
+    --muted: #9badbd;
+    --line: #2a3d52;
+    --accent: #5cc0de;
+    --accent-ink: #08202b;
+    --stamp: #f0b55a;
+    --ok: #6fd097;
+    --warn: #f0a874;
+    --code-bg: #0f1d2d;
+    --hl-key: #7fd3ec;
+    --hl-val: #f0b55a;
+    color-scheme: dark;
+  }
+
+  * { box-sizing: border-box; }
+  body {
+    background: var(--bg);
+    color: var(--ink);
+    font-family: var(--font-body);
+    font-size: 16px;
+    line-height: 1.5;
+    padding-block: 28px 40px;
+    padding-left: max(16px, env(safe-area-inset-left, 0px));
+    padding-right: max(16px, env(safe-area-inset-right, 0px));
+  }
+  .app { max-width: 1040px; margin-inline: auto; }
+
+  header { margin-bottom: 22px; }
+  h1 {
+    font-family: var(--font-display);
+    font-weight: 400;
+    font-size: clamp(30px, 6vw, 44px);
+    line-height: 1.1;
+    margin: 0 0 8px;
+    text-wrap: balance;
+  }
+  header p { margin: 0; color: var(--muted); max-width: 52ch; }
+
+  .layout {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1.1fr);
+    gap: 20px;
+    align-items: start;
+  }
+  @media (max-width: 820px) { .layout { grid-template-columns: minmax(0, 1fr); } }
+
+  .card {
+    background: var(--paper);
+    border: 1px solid var(--line);
+    border-radius: 6px;
+    padding: 20px;
+  }
+  .card + .card { margin-top: 20px; }
+
+  /* the one bold move: airmail stripe along the top of the output card */
+  .airmail {
+    padding-top: 0;
+    overflow: hidden;
+  }
+  .airmail::before {
+    content: "";
+    display: block;
+    height: 10px;
+    margin: 0 -20px 18px;
+    background: repeating-linear-gradient(-45deg, var(--accent) 0 14px, var(--paper) 14px 22px, var(--stamp) 22px 36px, var(--paper) 36px 44px);
+  }
+
+  h2 {
+    font-family: var(--font-display);
+    font-weight: 400;
+    font-size: 20px;
+    margin: 0 0 14px;
+  }
+  label, .label {
+    display: block;
+    font-weight: 600;
+    font-size: 14px;
+    margin-bottom: 5px;
+  }
+  .field { margin-bottom: 14px; }
+  input[type="text"], textarea {
+    width: 100%;
+    font: inherit;
+    color: var(--ink);
+    background: var(--paper);
+    border: 1px solid var(--line);
+    border-radius: 4px;
+    padding: 9px 11px;
+  }
+  textarea { resize: vertical; min-height: 130px; line-height: 1.55; }
+  input.ltr { direction: ltr; text-align: left; font-family: var(--font-mono); font-size: 14px; }
+  input:focus-visible, textarea:focus-visible, button:focus-visible, a:focus-visible, summary:focus-visible, .out:focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: 2px;
+  }
+  .hint { font-size: 13px; color: var(--warn); min-height: 20px; margin: 4px 0 0; }
+
+  details { margin-bottom: 14px; }
+  summary { cursor: pointer; font-size: 14px; color: var(--accent); font-weight: 600; margin-bottom: 10px; }
+
+  .presets { display: flex; flex-wrap: wrap; gap: 8px; }
+  .chip {
+    font: inherit;
+    font-size: 14px;
+    color: var(--ink);
+    background: transparent;
+    border: 1px solid var(--line);
+    border-radius: 999px;
+    padding: 5px 13px;
+    cursor: pointer;
+  }
+  .chip:hover { border-color: var(--accent); color: var(--accent); }
+
+  .field { position: relative; }
+
+  /* domain suggestions after the @ sign */
+  .suggest {
+    position: absolute; left: 0; right: 0; z-index: 20;
+    margin: 4px 0 0; padding: 4px; list-style: none;
+    background: var(--paper);
+    border: 1px solid var(--accent);
+    border-radius: 6px;
+    box-shadow: 0 10px 28px rgba(8, 30, 50, .22);
+    direction: ltr; max-height: 250px; overflow-y: auto;
+  }
+  .suggest .cap { direction: rtl; font-size: 12px; font-weight: 700; letter-spacing: .03em; color: var(--muted); padding: 4px 8px 6px; }
+  .suggest li[role="option"] {
+    display: flex; flex-wrap: wrap; padding: 8px 10px; border-radius: 4px;
+    font-family: var(--font-mono); font-size: 14px; cursor: pointer; overflow-wrap: anywhere;
+  }
+  .suggest .loc { opacity: .6; }
+  .suggest .dom { font-weight: 500; }
+  .suggest li[aria-selected="true"] { background: var(--accent); color: var(--accent-ink); }
+
+  /* template picker */
+  .cats { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 10px; }
+  .cat {
+    font: inherit; font-size: 13px; font-weight: 600; color: var(--muted);
+    background: transparent; border: 1px solid var(--line); border-radius: 999px;
+    padding: 4px 12px; cursor: pointer;
+  }
+  .cat:hover { color: var(--ink); border-color: var(--ink); }
+  .cat[aria-pressed="true"] { background: var(--ink); border-color: var(--ink); color: var(--paper); }
+  .tpls {
+    display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+    gap: 8px; max-height: 260px; overflow-y: auto; padding: 2px;
+  }
+  .tpl {
+    --c: hsl(var(--h) 55% 48%);
+    font: inherit; text-align: start; min-width: 0; cursor: pointer;
+    color: var(--ink); background: var(--paper);
+    border: 1px solid var(--line); border-top: 4px solid var(--c);
+    border-radius: 5px; padding: 8px 10px;
+  }
+  .tpl strong { display: block; font-size: 14px; line-height: 1.3; }
+  .tpl span { font-size: 12px; color: var(--muted); }
+  .tpl:hover, .tpl:focus-visible { background: color-mix(in srgb, var(--c) 14%, var(--paper)); }
+
+  .seg { display: inline-flex; border: 1px solid var(--line); border-radius: 5px; overflow: hidden; margin-bottom: 12px; }
+  .seg button {
+    font: inherit; font-size: 14px; font-weight: 600;
+    background: transparent; color: var(--muted);
+    border: 0; padding: 6px 16px; cursor: pointer;
+  }
+  .seg button[aria-pressed="true"] { background: var(--accent); color: var(--accent-ink); }
+
+  .sample-note { margin: -4px 0 12px; font-size: 13px; color: var(--muted); }
+  .out {
+    direction: ltr;
+    text-align: left;
+    font-family: var(--font-mono);
+    font-size: 13px;
+    line-height: 1.7;
+    background: var(--code-bg);
+    border: 1px dashed var(--line);
+    border-radius: 4px;
+    padding: 12px 14px;
+    overflow-wrap: anywhere;
+    min-height: 74px;
+  }
+  .out .k { color: var(--hl-key); font-weight: 500; }
+  .out .v { color: var(--hl-val); }
+  .btn-text { margin-top: 10px; }
+
+  .actions { display: flex; flex-wrap: wrap; gap: 8px; margin: 14px 0 6px; }
+  .btn {
+    font: inherit; font-weight: 700; font-size: 15px;
+    display: inline-flex; align-items: center; justify-content: center;
+    background: transparent; color: var(--ink);
+    border: 1px solid var(--line);
+    border-radius: 5px;
+    padding: 9px 16px;
+    cursor: pointer;
+    text-decoration: none;
+  }
+  .btn:hover { border-color: var(--accent); }
+  .btn.primary { background: var(--accent); border-color: var(--accent); color: var(--accent-ink); }
+  .btn.primary:hover { filter: brightness(1.08); }
+  .status { min-height: 22px; margin: 4px 0 0; font-size: 14px; color: var(--ok); font-weight: 600; }
+
+  .preview { margin-top: 16px; border: 1px solid var(--line); border-radius: 5px; overflow: hidden; }
+  .preview-head { background: var(--code-bg); font-size: 12px; font-weight: 700; letter-spacing: .04em; color: var(--muted); padding: 6px 12px; }
+  .preview-row { display: flex; gap: 8px; padding: 7px 12px; border-bottom: 1px solid var(--line); font-size: 14px; }
+  .preview-row b { color: var(--muted); font-weight: 600; flex: none; min-width: 3.2em; }
+  .preview-row span { min-width: 0; overflow-wrap: anywhere; }
+  .preview-body { padding: 12px; white-space: pre-wrap; overflow-wrap: anywhere; font-size: 15px; min-height: 70px; }
+  .empty { color: var(--muted); }
+
+  .saved-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; }
+  .saved-list li { display: flex; gap: 8px; align-items: stretch; }
+  .saved-list .load {
+    flex: 1; min-width: 0; text-align: start;
+    font: inherit; color: var(--ink); background: transparent;
+    border: 1px solid var(--line); border-radius: 5px; padding: 8px 12px; cursor: pointer;
+  }
+  .saved-list .load:hover { border-color: var(--accent); }
+  .saved-list .load small { display: block; color: var(--muted); direction: ltr; text-align: start; overflow-wrap: anywhere; }
+  .saved-list .del {
+    flex: none; font: inherit; color: var(--muted); background: transparent;
+    border: 1px solid var(--line); border-radius: 5px; padding: 0 12px; cursor: pointer;
+  }
+  .saved-list .del:hover { color: var(--warn); border-color: var(--warn); }
+
+  @media (prefers-reduced-motion: reduce) { * { transition: none !important; animation: none !important; } }
+</style>
+
+<div class="app" dir="rtl" lang="he">
+  <header>
+    <h1>מחולל קישורי מייל</h1>
+    <p>ממלאים נמען, נושא ותוכן, והקישור לפתיחת מייל מוכן בג'ימייל נוצר מיד. מעתיקים אותו ומדביקים באתר, בוואטסאפ או בכל מקום.</p>
+  </header>
+
+  <div class="layout">
+    <div>
+      <section class="card" aria-labelledby="h-form">
+        <h2 id="h-form">פרטי המייל</h2>
+
+        <div class="field">
+          <label for="to">למי לשלוח</label>
+          <input type="text" id="to" class="ltr" inputmode="email" autocomplete="off" placeholder="name@example.com, אפשר כמה כתובות עם פסיק">
+          <p class="hint" id="hint" aria-live="polite"></p>
+        </div>
+<details>
+          <summary>עותק ועותק מוסתר</summary>
+          <div class="field">
+            <label for="cc">עותק (CC)</label>
+            <input type="text" id="cc" class="ltr" autocomplete="off" placeholder="copy@example.com">
+          </div>
+          <div class="field">
+            <label for="bcc">עותק מוסתר (BCC)</label>
+            <input type="text" id="bcc" class="ltr" autocomplete="off" placeholder="hidden@example.com">
+          </div>
+        </details>
+        <div class="field">
+          <label for="su">נושא המייל</label>
+          <input type="text" id="su" autocomplete="off" placeholder="על מה המייל?">
+        </div>
+
+        <div class="field">
+          <label for="body">תוכן המייל</label>
+          <textarea id="body" placeholder="כתבו כאן את ההודעה המוכנה מראש"></textarea>
+        </div>
+
+        <div class="label">תבניות מוכנות</div>
+        <div class="cats" id="cats" role="group" aria-label="קטגוריות תבניות"></div>
+        <div class="tpls" id="presets"></div>
+      </section>
+
+      <section class="card" id="saved-card" aria-labelledby="h-saved" hidden>
+        <h2 id="h-saved">הקישורים ששמרתם</h2>
+        <ul class="saved-list" id="saved-list"></ul>
+      </section>
+    </div>
+
+    <section class="card airmail" aria-labelledby="h-out">
+      <h2 id="h-out">הקישור שלכם</h2>
+      <p class="sample-note" id="sample-note">זו דוגמה. ברגע שתתחילו לכתוב, היא תיעלם והקישור ייבנה מהטקסט שלכם.</p>
+
+      <div class="seg" role="group" aria-label="סוג פלט">
+        <button type="button" id="tab-link" aria-pressed="true">קישור</button>
+        <button type="button" id="tab-code" aria-pressed="false">קוד לאתר</button>
+      </div>
+
+      <div class="out" id="out" tabindex="0" aria-label="הקישור שנוצר"></div>
+
+      <div class="field btn-text" id="btn-text-wrap" hidden>
+        <label for="btn-text">הטקסט שיופיע על הקישור באתר</label>
+        <input type="text" id="btn-text" value="שלחו לנו מייל">
+      </div>
+
+      <div class="actions">
+        <a class="btn primary" id="open" href="#" target="_blank" rel="noopener">פתח בג'ימייל</a>
+        <button class="btn" type="button" id="copy">העתק קישור</button>
+        <a class="btn" id="wa" href="#" target="_blank" rel="noopener">שתף בוואטסאפ</a>
+        <button class="btn" type="button" id="save">שמור ברשימה</button>
+      </div>
+      <p class="status" id="status" role="status" aria-live="polite"></p>
+
+      <div class="preview" aria-label="תצוגה מקדימה">
+        <div class="preview-head">כך המייל ייפתח בג'ימייל</div>
+        <div class="preview-row"><b>אל</b><span id="p-to"></span></div>
+        <div class="preview-row" id="p-cc-row" hidden><b>עותק</b><span id="p-cc"></span></div>
+        <div class="preview-row" id="p-bcc-row" hidden><b>מוסתר</b><span id="p-bcc"></span></div>
+        <div class="preview-row"><b>נושא</b><span id="p-su"></span></div>
+        <div class="preview-body" id="p-body"></div>
+      </div>
+    </section>
+  </div>
+</div>
+
+<script>
+(function () {
+  var BASE = "https://mail.google.com/mail/?view=cm&fs=1";
+  var $ = function (id) { return document.getElementById(id); };
+  var els = { to: $("to"), su: $("su"), body: $("body"), cc: $("cc"), bcc: $("bcc") };
+  var mode = "link";
+
+  var PRESETS = [
+    { name: "בקשת הצעת מחיר", su: "בקשה להצעת מחיר", body: "שלום רב,\n\nאשמח לקבל הצעת מחיר עבור השירות שלכם.\nאפשר לחזור אליי במייל או בטלפון.\n\nתודה מראש," },
+    { name: "תיאום פגישה", su: "תיאום פגישה", body: "שלום,\n\nאשמח לתאם פגישה בשבוע הקרוב.\nאילו ימים ושעות נוחים לכם?\n\nבברכה," },
+    { name: "הרשמה לאירוע", su: "הרשמה לאירוע", body: "שלום,\n\nאני מעוניין להירשם לאירוע.\nשם מלא:\nמספר משתתפים:\nטלפון:\n\nתודה," },
+    { name: "תודה", su: "תודה רבה", body: "שלום,\n\nרציתי להודות לכם מקרב לב על העזרה.\n\nבברכה," }
+  ];
+
+  PRESETS[0].cat = "business";
+  PRESETS[1].cat = "work";
+  PRESETS[2].cat = "community";
+  PRESETS[3].cat = "personal";
+  PRESETS.push.apply(PRESETS, [
+    { cat: "business", name: "הזמנת שירות", su: "הזמנת שירות", body: "שלום רב,\n\nאני מעוניין להזמין את השירות שלכם.\nפרטי ההזמנה:\nתאריך מבוקש:\nכתובת:\nטלפון ליצירת קשר:\n\nתודה מראש," },
+    { cat: "business", name: "בקשה לחשבונית", su: "בקשה לחשבונית", body: "שלום,\n\nאבקש לקבל חשבונית מס עבור התשלום האחרון.\nמספר הזמנה:\n\nתודה," },
+    { cat: "business", name: "מעקב אחרי הצעה", su: "מעקב אחרי הצעת המחיר", body: "שלום,\n\nרציתי לבדוק אם הצעת המחיר שנשלחה אליכם נבחנה.\nאשמח לעדכון ולמענה על שאלות נוספות.\n\nבברכה," },
+    { cat: "business", name: "שיתוף פעולה", su: "הצעה לשיתוף פעולה", body: "שלום רב,\n\nאני פונה אליכם עם רעיון לשיתוף פעולה.\nאשמח לקבוע שיחה קצרה ולהציג אותו.\n\nבברכה," },
+    { cat: "work", name: "הגשת מועמדות", su: "מועמדות למשרה", body: "שלום רב,\n\nאני מעוניין להגיש מועמדות למשרה שפרסמתם.\nקורות החיים מצורפים למייל זה.\nאשמח לשוחח בהזדמנות.\n\nבברכה," },
+    { cat: "work", name: "בקשת חופשה", su: "בקשה לחופשה", body: "שלום,\n\nאבקש לצאת לחופשה בתאריכים:\nמתאריך:\nעד תאריך:\nאעביר את המשימות הפתוחות לפני היציאה.\n\nתודה," },
+    { cat: "work", name: "המשימה הושלמה", su: "עדכון: המשימה הושלמה", body: "שלום,\n\nמעדכן שהמשימה הושלמה.\nהחומרים זמינים לבדיקה.\nאשמח למשוב.\n\nבברכה," },
+    { cat: "work", name: "מכתב המלצה", su: "בקשה למכתב המלצה", body: "שלום,\n\nאשמח אם תוכלו לכתוב עבורי מכתב המלצה.\nאשמח לספק פרטים נוספים לפי הצורך.\n\nתודה רבה," },
+    { cat: "service", name: "תלונה על שירות", su: "תלונה על שירות", body: "שלום,\n\nאני פונה בעניין שירות שלא היה כמצופה.\nתיאור המקרה:\nתאריך:\nאשמח לטיפול ולמענה.\n\nבברכה," },
+    { cat: "service", name: "החזר כספי", su: "בקשה להחזר כספי", body: "שלום,\n\nאבקש החזר כספי עבור הרכישה.\nמספר הזמנה:\nסיבת הבקשה:\n\nתודה," },
+    { cat: "service", name: "סטטוס הזמנה", su: "בירור סטטוס הזמנה", body: "שלום,\n\nאשמח לברר מה סטטוס ההזמנה שלי.\nמספר הזמנה:\n\nתודה," },
+    { cat: "service", name: "ביטול מנוי", su: "בקשה לביטול מנוי", body: "שלום,\n\nאבקש לבטל את המנוי שלי בתום התקופה הנוכחית.\nאשמח לאישור בכתב.\n\nתודה," },
+    { cat: "service", name: "תמיכה טכנית", su: "בקשת תמיכה טכנית", body: "שלום,\n\nנתקלתי בתקלה ואשמח לעזרה.\nמה קרה:\nמתי זה התחיל:\n\nתודה," },
+    { cat: "personal", name: "יום הולדת", su: "מזל טוב ליום ההולדת", body: "שלום,\n\nמזל טוב ליום ההולדת!\nמאחל לך שנה של בריאות, שמחה והצלחה.\n\nבאהבה," },
+    { cat: "personal", name: "הזמנה לאירוע", su: "הזמנה לאירוע", body: "שלום,\n\nנשמח לראותכם באירוע שלנו.\nתאריך:\nשעה:\nמקום:\n\nנשמח לאישור הגעה," },
+    { cat: "personal", name: "מה שלומך", su: "מה שלומך?", body: "שלום,\n\nעבר זמן מאז שדיברנו ורציתי לשמוע מה שלומך ומה חדש.\nאשמח להתעדכן.\n\nבברכה," },
+    { cat: "personal", name: "ברכת חג", su: "חג שמח", body: "שלום,\n\nמאחל לך ולמשפחתך חג שמח ומבורך.\n\nבברכה," },
+    { cat: "community", name: "התנדבות", su: "הצעה להתנדבות", body: "שלום,\n\nאשמח להתנדב בפעילות שלכם.\nאני זמין בימים ובשעות הבאים:\n\nתודה," },
+    { cat: "community", name: "בירור על שיעור", su: "בירור על שיעור", body: "שלום,\n\nאשמח לקבל פרטים על השיעור: ימים, שעות ומחיר.\n\nתודה," },
+    { cat: "community", name: "שאלה על פעילות", su: "שאלה לגבי הפעילות", body: "שלום,\n\nאשמח לקבל מידע נוסף על הפעילות הקרובה.\nמה צריך להביא ואיך נרשמים?\n\nתודה," }
+  ]);
+
+  var CATS = [
+    { id: "all", label: "הכול", h: 210 },
+    { id: "business", label: "עסקים", h: 200 },
+    { id: "work", label: "עבודה", h: 250 },
+    { id: "service", label: "שירות", h: 28 },
+    { id: "personal", label: "אישי", h: 335 },
+    { id: "community", label: "קהילה", h: 150 }
+  ];
+  var DOMAINS = ["gmail.com", "walla.co.il", "outlook.com", "hotmail.com", "yahoo.com", "icloud.com", "012.net.il", "bezeqint.net", "netvision.net.il", "live.com", "proton.me"];
+
+  function enc(s) {
+    return encodeURIComponent(s).replace(/%20/g, "+").replace(/%40/g, "@").replace(/%2C/g, ",");
+  }
+
+  function values() {
+    return {
+      to: els.to.value.trim(), su: els.su.value, body: els.body.value,
+      cc: els.cc.value.trim(), bcc: els.bcc.value.trim()
+    };
+  }
+
+  function parts(v) {
+    var p = [["to", v.to], ["cc", v.cc], ["bcc", v.bcc], ["su", v.su], ["body", v.body]];
+    return p.filter(function (x) { return x[1] !== ""; });
+  }
+
+  function buildUrl(v) {
+    return BASE + parts(v).map(function (x) { return "&" + x[0] + "=" + enc(x[1]); }).join("");
+  }
+
+  function esc(s) {
+    return s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
+  }
+
+  function highlighted(v) {
+    return esc(BASE) + parts(v).map(function (x) {
+      return '&amp;<span class="k">' + x[0] + '=</span><span class="v">' + esc(enc(x[1])) + "</span>";
+    }).join("");
+  }
+
+  function codeText(url) {
+    var label = $("btn-text").value.trim() || "שלחו לנו מייל";
+    return '<a href="' + url.replace(/&/g, "&amp;") + '" target="_blank" rel="noopener">' + label.replace(/</g, "&lt;") + "</a>";
+  }
+
+  function setPreview(id, rowId, text) {
+    $(id).textContent = text;
+    if (rowId) $(rowId).hidden = !text;
+  }
+
+  var SAMPLE = { to: "office@example.com", su: "בקשה להצעת מחיר", body: PRESETS[0].body, cc: "", bcc: "" };
+
+  /* the example lives in the placeholders; it disappears as soon as the user types */
+  els.to.placeholder = SAMPLE.to;
+  els.su.placeholder = SAMPLE.su;
+  els.body.placeholder = SAMPLE.body;
+  els.cc.placeholder = "copy@example.com";
+  els.bcc.placeholder = "hidden@example.com";
+
+  function update() {
+    var real = values();
+    var sample = !real.to && !real.su && !real.body && !real.cc && !real.bcc;
+    var v = sample ? SAMPLE : real;
+    var url = buildUrl(v);
+    $("sample-note").hidden = !sample;
+
+    if (mode === "link") {
+      $("out").innerHTML = highlighted(v);
+    } else {
+      $("out").textContent = codeText(url);
+    }
+    $("open").href = url;
+    $("wa").href = "https://wa.me/?text=" + encodeURIComponent(url);
+
+    var addrs = v.to ? v.to.split(",") : [];
+    var bad = addrs.some(function (a) { return !/^\s*[^\s@,]+@[^\s@,]+\.[^\s@,]+\s*$/.test(a); });
+    $("hint").textContent = bad ? "כתובת המייל נראית לא תקינה. בדקו שיש בה @ ונקודה." : "";
+
+    var to = $("p-to");
+    to.textContent = v.to || "לא הוגדר נמען";
+    to.className = (v.to && !sample) ? "" : "empty";
+    setPreview("p-cc", "p-cc-row", v.cc);
+    setPreview("p-bcc", "p-bcc-row", v.bcc);
+    var su = $("p-su");
+    su.textContent = v.su || "ללא נושא";
+    su.className = (v.su && !sample) ? "" : "empty";
+    var pb = $("p-body");
+    pb.textContent = v.body || "ההודעה תופיע כאן";
+    pb.className = "preview-body" + ((v.body && !sample) ? "" : " empty");
+  }
+
+  function say(msg) {
+    var s = $("status");
+    s.textContent = msg;
+    clearTimeout(say.t);
+    say.t = setTimeout(function () { s.textContent = ""; }, 3500);
+  }
+
+  function selectOut() {
+    var r = document.createRange();
+    r.selectNodeContents($("out"));
+    var sel = window.getSelection();
+    sel.removeAllRanges();
+    sel.addRange(r);
+  }
+
+  function copy() {
+    var text = $("out").textContent;
+    var done = function () { say(mode === "link" ? "הקישור הועתק" : "הקוד הועתק"); };
+    var fail = function () { selectOut(); say("סימנתי את הטקסט. לחצו Ctrl+C או החזיקו לחיצה והעתיקו."); };
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(text).then(done, fail);
+    } else {
+      fail();
+    }
+  }
+
+  function setMode(m) {
+    mode = m;
+    $("tab-link").setAttribute("aria-pressed", String(m === "link"));
+    $("tab-code").setAttribute("aria-pressed", String(m === "code"));
+    $("btn-text-wrap").hidden = m !== "code";
+    $("copy").textContent = m === "link" ? "העתק קישור" : "העתק קוד";
+    update();
+  }
+
+  /* saved list, per viewer */
+  var KEY = "mail-link-generator-saved";
+  function loadSaved() {
+    try { return JSON.parse(localStorage.getItem(KEY)) || []; } catch (e) { return []; }
+  }
+  function storeSaved(list) {
+    try { localStorage.setItem(KEY, JSON.stringify(list)); } catch (e) {}
+  }
+  var saved = loadSaved();
+
+  function renderSaved() {
+    var ul = $("saved-list");
+    ul.innerHTML = "";
+    $("saved-card").hidden = saved.length === 0;
+    saved.forEach(function (item, i) {
+      var li = document.createElement("li");
+      var load = document.createElement("button");
+      load.type = "button";
+      load.className = "load";
+      var t = document.createElement("span");
+      t.textContent = item.su || "ללא נושא";
+      var s = document.createElement("small");
+      s.textContent = item.to || "ללא נמען";
+      load.appendChild(t);
+      load.appendChild(s);
+      load.addEventListener("click", function () { fill(item); say("הפרטים נטענו לטופס"); });
+      var del = document.createElement("button");
+      del.type = "button";
+      del.className = "del";
+      del.textContent = "מחק";
+      del.setAttribute("aria-label", "מחק את " + (item.su || "הקישור"));
+      del.addEventListener("click", function () {
+        saved.splice(i, 1);
+        storeSaved(saved);
+        renderSaved();
+      });
+      li.appendChild(load);
+      li.appendChild(del);
+      ul.appendChild(li);
+    });
+  }
+
+  function fill(v) {
+    els.to.value = v.to || "";
+    els.su.value = v.su || "";
+    els.body.value = v.body || "";
+    els.cc.value = v.cc || "";
+    els.bcc.value = v.bcc || "";
+    update();
+  }
+
+  function saveCurrent() {
+    var v = values();
+    if (!v.to && !v.su && !v.body) { say("אין מה לשמור עדיין"); return; }
+    saved.unshift(v);
+    saved = saved.slice(0, 8);
+    storeSaved(saved);
+    renderSaved();
+    say("נשמר ברשימה");
+  }
+
+  /* templates fill subject and text and keep the recipient already typed */
+  var pbox = $("presets");
+  var cbox = $("cats");
+  var currentCat = "all";
+
+  function catOf(id) {
+    return CATS.filter(function (c) { return c.id === id; })[0] || CATS[0];
+  }
+
+  function renderTemplates() {
+    pbox.innerHTML = "";
+    PRESETS.forEach(function (p) {
+      if (currentCat !== "all" && p.cat !== currentCat) return;
+      var c = catOf(p.cat);
+      var b = document.createElement("button");
+      b.type = "button";
+      b.className = "tpl";
+      b.style.setProperty("--h", c.h);
+      var n = document.createElement("strong");
+      n.textContent = p.name;
+      var k = document.createElement("span");
+      k.textContent = c.label;
+      b.appendChild(n);
+      b.appendChild(k);
+      b.addEventListener("click", function () {
+        els.su.value = p.su;
+        els.body.value = p.body;
+        update();
+      });
+      pbox.appendChild(b);
+    });
+  }
+
+  function renderCats() {
+    cbox.innerHTML = "";
+    CATS.forEach(function (c) {
+      var b = document.createElement("button");
+      b.type = "button";
+      b.className = "cat";
+      b.textContent = c.label;
+      b.setAttribute("aria-pressed", String(c.id === currentCat));
+      b.addEventListener("click", function () {
+        currentCat = c.id;
+        renderCats();
+        renderTemplates();
+      });
+      cbox.appendChild(b);
+    });
+  }
+
+  /* after an @ sign, offer the common domains */
+  function attachSuggest(input) {
+    var box = document.createElement("ul");
+    box.className = "suggest";
+    box.setAttribute("role", "listbox");
+    box.setAttribute("aria-label", "סיומות מייל");
+    box.hidden = true;
+    input.insertAdjacentElement("afterend", box);
+    input.setAttribute("aria-autocomplete", "list");
+    var items = [];
+    var active = 0;
+    var localPart = "";
+
+    function context() {
+      var val = input.value;
+      var pos = typeof input.selectionStart === "number" ? input.selectionStart : val.length;
+      var before = val.slice(0, pos);
+      var start = before.lastIndexOf(",") + 1;
+      return { start: start, pos: pos, cur: before.slice(start) };
+    }
+
+    function hide() { box.hidden = true; items = []; }
+
+    function draw() {
+      box.innerHTML = "";
+      var cap = document.createElement("li");
+      cap.className = "cap";
+      cap.setAttribute("role", "presentation");
+      cap.textContent = "בחרו סיומת";
+      box.appendChild(cap);
+      items.forEach(function (d, i) {
+        var li = document.createElement("li");
+        li.setAttribute("role", "option");
+        li.setAttribute("aria-selected", String(i === active));
+        var a = document.createElement("span");
+        a.className = "loc";
+        a.textContent = localPart + "@";
+        var b = document.createElement("span");
+        b.className = "dom";
+        b.textContent = d;
+        li.appendChild(a);
+        li.appendChild(b);
+        li.addEventListener("pointerdown", function (e) { e.preventDefault(); pick(i); });
+        box.appendChild(li);
+      });
+    }
+
+    function show() {
+      var s = context();
+      var at = s.cur.indexOf("@");
+      if (at < 1) { hide(); return; }
+      var local = s.cur.slice(0, at).trim();
+      if (!local || /\s/.test(local)) { hide(); return; }
+      var typed = s.cur.slice(at + 1).trim().toLowerCase();
+      items = DOMAINS.filter(function (d) { return d.indexOf(typed) === 0 && d !== typed; }).slice(0, 7);
+      if (!items.length) { hide(); return; }
+      localPart = local;
+      active = 0;
+      draw();
+      box.hidden = false;
+    }
+
+    function pick(i) {
+      var d = items[i];
+      if (!d) return;
+      var s = context();
+      var at = s.cur.indexOf("@");
+      var lead = s.cur.match(/^\s*/)[0];
+      var seg = lead + s.cur.slice(lead.length, at) + "@" + d;
+      var val = input.value;
+      input.value = val.slice(0, s.start) + seg + val.slice(s.pos);
+      var caret = s.start + seg.length;
+      try { input.setSelectionRange(caret, caret); } catch (e) {}
+      hide();
+      input.dispatchEvent(new Event("input", { bubbles: true }));
+    }
+
+    input.addEventListener("input", show);
+    input.addEventListener("focus", show);
+    input.addEventListener("click", show);
+    input.addEventListener("blur", function () { setTimeout(hide, 150); });
+    input.addEventListener("keydown", function (e) {
+      if (box.hidden || !items.length) return;
+      if (e.key === "ArrowDown") { active = (active + 1) % items.length; draw(); e.preventDefault(); }
+      else if (e.key === "ArrowUp") { active = (active - 1 + items.length) % items.length; draw(); e.preventDefault(); }
+      else if (e.key === "Enter" || e.key === "Tab") { pick(active); e.preventDefault(); }
+      else if (e.key === "Escape") { hide(); }
+    });
+  }
+
+  Object.keys(els).forEach(function (k) { els[k].addEventListener("input", update); });
+  $("btn-text").addEventListener("input", update);
+  $("tab-link").addEventListener("click", function () { setMode("link"); });
+  $("tab-code").addEventListener("click", function () { setMode("code"); });
+  $("copy").addEventListener("click", copy);
+  $("save").addEventListener("click", saveCurrent);
+
+  attachSuggest(els.to);
+  attachSuggest(els.cc);
+  attachSuggest(els.bcc);
+  renderCats();
+  renderTemplates();
+  update();
+  renderSaved();
+})();
+</script>
+
+</body></html>
+<!-- Injection By NetFree -->
+<script src="//netfree.link/injection-script/go-payment.js" type="text/javascript" async ></script>
+<script src="//netfree.link/injection-script/popup-card-init.js" type="text/javascript" async ></script>
